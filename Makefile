@@ -1,7 +1,7 @@
 CC = clang++
 CXXFLAGS = -Wall -O2 -ggdb -Wextra -pedantic -Werror -std=c++11
 
-LIBS := -lboost_program_options -lboost_filesystem -lboost_system -ltbb
+LIBS := -lboost_program_options -lboost_filesystem -lboost_serialization -lboost_system -ltbb
 
 OS := $(shell uname -s)
 

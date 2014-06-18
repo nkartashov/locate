@@ -30,6 +30,7 @@ namespace locate {
           arguments...);
         std::unique_lock<std::mutex> lock(m_task_mutex);
         m_task_queue.push(bound_task);
+        lock.unlock();
         m_worker_blocker.notify_one();
         return new_task->get_future();
       }

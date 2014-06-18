@@ -4,9 +4,6 @@
 #include <string>
 
 template<typename T>
-void PARAMETER_UNUSED(T& parameter, std::string const& reason) {
-  (void) parameter;
-  (void) reason;
-}
+void PARAMETER_UNUSED(T const& /*parameter*/, std::string const& /*reason*/) {}
 
 #endif /* end of include guard */
