@@ -28,7 +28,7 @@ namespace locate {
           while (!m_stop && m_task_queue.empty()) {
             m_worker_blocker.wait(lock);
           }
-          if (m_stop) {
+          if (m_stop && m_task_queue.empty()) {
             return;
           }
           Task task = m_task_queue.front();
