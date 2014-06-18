@@ -16,6 +16,7 @@ namespace locate {
       using Task = std::function<void(void)>;
       template<class R, class... Args>
       using TaskPtr = std::shared_ptr<std::packaged_task<R(Args...)> >;
+      using Lock = std::unique_lock<std::mutex>;
 
       explicit ThreadPool(size_t thread_number = std::thread::hardware_concurrency());
       ~ThreadPool();
@@ -28,7 +29,7 @@ namespace locate {
           },
           new_task,
           arguments...);
-        std::unique_lock<std::mutex> lock(m_task_mutex);
+        Lock lock(m_task_mutex);
         m_task_queue.push(bound_task);
         lock.unlock();
         m_worker_blocker.notify_one();

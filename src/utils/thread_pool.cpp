@@ -24,7 +24,7 @@ namespace locate {
     for (size_t i = 0; i < thread_number; i++) {
       m_workers.push_back(std::thread([&] () {
         while(true) {
-          std::unique_lock<std::mutex> lock(m_task_mutex);
+          Lock lock(m_task_mutex);
           while (!m_stop && m_task_queue.empty()) {
             m_worker_blocker.wait(lock);
           }
