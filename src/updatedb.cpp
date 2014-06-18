@@ -33,12 +33,11 @@ int main(int argc, char** argv) {
       return 0;
     }
     ThreadPool pool;
-    DirectoryTraverser traverser(pool, args["file-root"].as<std::string>());
+    SuffixArray array;
+    DirectoryTraverser traverser(pool, args["file-root"].as<std::string>(), array);
     traverser.Traverse();
     pool.Done();
-    auto& results = traverser.Results();
-    SuffixArray array(results);
-
+    array.FinishBuild();
     std::ofstream ofs(args["db-file"].as<std::string>());
     if (!ofs) {
       std::cerr << "Unable to open the file " + args["db-file"].as<std::string>() + " for writing" << std::endl;

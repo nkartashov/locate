@@ -4,9 +4,11 @@
 #include <boost/filesystem.hpp>
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 
 #include "thread_pool.h"
-#include "multithread_queue.h"
+#include "suffix_array.h"
+#include "unused.h"
 
 namespace fs = boost::filesystem;
 
@@ -14,12 +16,12 @@ namespace locate {
   class DirectoryTraverser {
     public:
       using Path = fs::path;
-      using Iterator = fs::directory_iterator;
-      using ResultQueue = MultithreadQueue<Path>;
+      using Iterator = fs::recursive_directory_iterator;
 
-      DirectoryTraverser(ThreadPool& pool, std::string root):
+      DirectoryTraverser(ThreadPool& pool, std::string root, SuffixArray& receiver):
         m_pool(pool),
-        m_root(root) {}
+        m_root(root),
+        m_receiver(receiver) {}
 
       void Traverse() {
         Path root(m_root);
@@ -27,27 +29,16 @@ namespace locate {
         if (!fs::exists(root)) {
             throw std::runtime_error(root.string() + " does not exists");
         }
-        if (!fs::is_directory(root)) {
-          m_results.Push(root);
-          return;
-        }
-        PerformTraverse(&m_pool, &m_results, root);
-      }
-
-      ResultQueue& Results() {return m_results;}
-    private:
-      static void PerformTraverse(ThreadPool* pool, ResultQueue* results, Path root) {
         Iterator traverser(root);
         std::vector<std::future<void> > futures;
         while(traverser != Iterator()) {
           auto path = traverser->path();
           if (!fs::is_symlink(traverser->symlink_status())) {
             if (fs::is_directory(path) || fs::is_regular_file(path)) {
-              results->Push(path);
-            }
-            if (fs::is_directory(path)) {
-              ThreadPool::Task task = std::bind(&DirectoryTraverser::PerformTraverse, pool, results, path);
-              futures.push_back(pool->AddTask(task));
+              ThreadPool::Task task = [this, path]() {
+                m_receiver.MultithreadAddReferences(path);
+              };
+              futures.push_back(m_pool.AddTask(task));
             }
           }
           traverser++;
@@ -57,9 +48,10 @@ namespace locate {
         }
       }
 
-      ResultQueue m_results;
+    private:
       ThreadPool& m_pool;
       std::string m_root;
+      SuffixArray& m_receiver;
   };
 } // namespace locate
 

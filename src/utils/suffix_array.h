@@ -12,9 +12,9 @@
 #include <string>
 #include <iostream>
 #include <set>
+#include <mutex>
 
 #include "unused.h"
-#include "multithread_queue.h"
 
 namespace locate {
   namespace fs = boost::filesystem;
@@ -28,19 +28,11 @@ namespace locate {
       using SuffixReference = std::pair<std::string, Indices>;
       using References = std::vector<SuffixReference>;
       using Matches = std::set<std::string>;
+      using Lock = std::unique_lock<std::mutex>;
 
       SuffixArray() {}
 
-      SuffixArray(MultithreadQueue<Path>& files) {
-        std::queue<Path> file_queue = files.Queue();
-        while(!file_queue.empty()) {
-          Path file = file_queue.front();
-          file_queue.pop();
-          file = fs::canonical(file);
-          m_paths.push_back(file.string());
-          std::string word = file.filename().string();
-          AddReferences(word, m_paths.size() - 1);
-        }
+      void FinishBuild() {
         tbb::parallel_sort(m_references.begin(), m_references.end());
         RemoveDuplicates();
       }
@@ -66,6 +58,14 @@ namespace locate {
         return result;
       }
 
+      void MultithreadAddReferences(Path path) {
+        path = fs::canonical(path );
+        std::string word = path.filename().string();
+        Lock lock(m_array_mutex);
+        m_paths.push_back(path.string());
+        AddReferences(word, m_paths.size() - 1);
+      }
+
     private:
       void RemoveDuplicates() {
         References references;
@@ -85,15 +85,20 @@ namespace locate {
       }
 
       void AddReferences(std::string& word, size_t index) {
-        for (size_t i = 0; i < word.size() - 1; i++) {
+        Indices indices;
+        indices.push_back(index);
+        m_references.push_back(std::make_pair(word, indices));
+        while (word.size() != 0) {
+          word = word.substr(1);
           Indices indices;
           indices.push_back(index);
-          m_references.push_back(std::make_pair(word.substr(i), indices));
+          m_references.push_back(std::make_pair(word, indices));
         }
       }
 
       References m_references;
       Strings m_paths;
+      std::mutex m_array_mutex;
   };
 
 } // namespace locate
